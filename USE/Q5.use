@@ -1,0 +1,113 @@
+model Q5
+
+class Person
+attributes
+birthYear : Integer
+deathYear : Integer
+age : Integer
+estadoMarital : String derive:
+    if (self.husband->size() > 0) then 'Casada'
+    else
+        if (self.wife->size() > 0) then 'Casado'
+        else    'Soltere'
+        endif
+    endif
+isDead : Boolean derive: 
+    self.deathYear <> null
+estadoEdad : String derive : 
+    if (self.age<>null and self.age>=0) then 
+        if (self.age >=0 and self.age < self.community.edadNinoJoven) then 'Nino' 
+        else 
+            if (self.age >= self.community.edadNinoJoven and self.age < self.community.edadJovenAdulto) then 'Joven' 
+            else
+                if (self.age >= self.community.edadJovenAdulto and self.age < self.community.edadAdultoAnciano) then 'Adulto' 
+                else
+                    if (self.age >= self.community.edadAdultoAnciano) then 'Anciano' 
+                    else 'Desconocido'
+                    endif
+                endif
+            endif
+        endif
+    else 'No nacido'
+    endif
+end
+
+class Marriage
+attributes
+startYear : Integer
+endYear : Integer
+end
+
+class Community
+attributes
+edadNinoJoven : Integer
+edadJovenAdulto : Integer
+edadAdultoAnciano : Integer
+end
+
+class Clock
+attributes
+NOW: Integer
+--started : Boolean -> No se como usarlo honestamente
+end
+
+association marryWifeHusband between
+Person[1] role wife
+Marriage[*] role husband
+end
+
+association marryHusbandWife between
+Person[1] role husband
+Marriage[*] role wife
+end
+
+association casa between
+Person[*] role solicita
+Person[*] role solicitado
+end
+
+association divorcio between
+Person[0..1] role solicitaDiv
+Person[0..1] role solicitadoDiv
+end
+
+composition perteneceAComunidad between
+Community[1] role community --base
+Person[*] role person
+end
+
+aggregation tiempo between
+Community[*] role community --base
+Clock[1] role clock
+end
+
+constraints
+--RESTRICCIONES ALÉTICAS
+
+--Una persona no puede fallecer antes de nacer.
+context Person inv personaNoPuedeMorirAntesDeNacer:
+    self.deathYear <> null and self.birthYear <> null implies
+        self.deathYear >= self.birthYear
+
+--Un matrimonio no puede acabar antes de empezar.
+context Marriage inv matrimonioNoPuedeAcabarAntesDeEmpezar:
+    self.endYear<>null implies
+        self.endYear >= self.startYear
+--Los muertos no pueden estar casados.
+context Person inv personaMuertaNoPuedeEstarCasada:
+    self.isDead = true implies self.estadoMarital = 'Soltere'
+
+--No se puede nacer en el futuro: Clock.NOW tiene que ser mayor o igual que cualquier fecha de nacimiento.
+context Community inv noSePuedeNacerEnElFuturo:
+    self.clock <> null implies
+        self.person->forAll(p | p.birthYear <> null implies p.birthYear <= self.clock.NOW)
+
+--No puede haber matrimonios futuros (“acordados”): Clock.NOW tiene que ser siempre mayor o igual que cualquier fecha de comienzo de un matrimonio.
+context Community inv noHayMatrimoniosAcordados:
+    self.clock <> null implies
+        (self.person.husband<> null implies self.person.husband->forAll(h | h.startYear <= self.clock.NOW)) and
+        (self.person.wife <> null implies self.person.wife -> forAll(w | w.startYear <= self.clock.NOW))
+
+--No se puede divorciar una persona de alguien con quien no esté actualmente casado.
+--context Person inv noPuedesDivorciarteSiNoEstasCasado:
+
