@@ -36,6 +36,7 @@ class Marriage
 attributes
 startYear : Integer
 endYear : Integer
+
 end
 
 class Community
@@ -109,5 +110,7 @@ context Community inv noHayMatrimoniosAcordados:
         (self.person.wife <> null implies self.person.wife -> forAll(w | w.startYear <= self.clock.NOW))
 
 --No se puede divorciar una persona de alguien con quien no esté actualmente casado.
---context Person inv noPuedesDivorciarteSiNoEstasCasado:
-
+context Person inv noPuedesDivorciarteSiNoEstasCasado:
+    self.solicitaDiv <> null implies
+    (self.wife.wife->includes(self) or 
+    self.husband.husband->includes(self))
