@@ -4,7 +4,22 @@ class Person
 attributes
 birthYear : Integer
 deathYear : Integer
-age : Integer
+age : Integer derive:
+    if (self.community.clock.NOW <> null) then
+        if (self.community.clock.NOW < self.birthYear) then null
+        else
+            if (self.community.clock.NOW >=self.birthYear and self.community.clock.NOW < self.deathYear) then
+                self.community.clock.NOW - self.birthYear
+            else
+                if (self.community.clock.NOW >=self.birthYear and self.community.clock.NOW >= self.deathYear) then
+                    self.deathYear - self.birthYear
+                else null
+                endif
+            endif
+        endif
+    else null
+    endif
+
 estadoMarital : String derive:
     if (self.husband->size() > 0) then 'Casada'
     else
@@ -13,7 +28,8 @@ estadoMarital : String derive:
         endif
     endif
 isDead : Boolean derive: 
-    self.deathYear <> null
+    self.deathYear <> null implies 
+        self.community.clock.NOW >= self.deathYear and self.community.clock.NOW >= self.birthYear
 estadoEdad : String derive : 
     if (self.age<>null and self.age>=0) then 
         if (self.age >=0 and self.age < self.community.edadNinoJoven) then 'Nino' 
@@ -36,7 +52,6 @@ class Marriage
 attributes
 startYear : Integer
 endYear : Integer
-
 end
 
 class Community
@@ -94,13 +109,14 @@ context Person inv personaNoPuedeMorirAntesDeNacer:
 context Marriage inv matrimonioNoPuedeAcabarAntesDeEmpezar:
     self.endYear<>null implies
         self.endYear >= self.startYear
+
 --Los muertos no pueden estar casados.
 context Person inv personaMuertaNoPuedeEstarCasada:
     self.isDead = true implies self.estadoMarital = 'Soltere'
 
 --No se puede nacer en el futuro: Clock.NOW tiene que ser mayor o igual que cualquier fecha de nacimiento.
 context Community inv noSePuedeNacerEnElFuturo:
-    self.clock <> null implies
+    self.clock.NOW <> null implies
         self.person->forAll(p | p.birthYear <> null implies p.birthYear <= self.clock.NOW)
 
 --No puede haber matrimonios futuros (“acordados”): Clock.NOW tiene que ser siempre mayor o igual que cualquier fecha de comienzo de un matrimonio.
@@ -114,3 +130,4 @@ context Person inv noPuedesDivorciarteSiNoEstasCasado:
     self.solicitaDiv <> null implies
     (self.wife.wife->includes(self) or 
     self.husband.husband->includes(self))
+
