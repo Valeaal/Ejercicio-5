@@ -46,6 +46,15 @@ estadoEdad : String derive :
         endif
     else 'No nacido'
     endif
+
+    operations
+    
+    isMarried(): Boolean =
+    self.husband->exists(m | m.startYear <> null and m.husband->size() >= 1) or
+    self.wife->exists(m | m.startYear <> null and m.wife->size() >= 1) --creo que esta ultima linea se podria quitar
+
+    marriages(): Integer =
+    self.husband->size() + self.wife->size()
 end
 
 class Marriage
