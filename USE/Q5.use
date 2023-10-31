@@ -140,3 +140,33 @@ context Person inv noPuedesDivorciarteSiNoEstasCasado:
     (self.wife.wife->includes(self) or 
     self.husband.husband->includes(self))
 
+--RESTRICCIONES DEÓNTICAS
+
+--No puede haber más que un reloj en toda la aplicación (y por tanto compartido por 
+--todas las comunidades)
+
+--Una persona no puede estar casada consigo misma.
+
+--Monogamia: Una persona no puede tener más de un matrimonio activo en un momento dado.
+
+--Los niños no pueden estar casados.
+
+--No se permite ni la eutanasia ni el suicidio.
+
+--La edad en las que las personas cambian de niño a joven, de joven a adulto o de adulto a anciano puede
+--depender de la comunidad a la que pertenezca la persona.
+
+--RESTRICCIONES ADICIONALES
+
+--Una persona solo puede solicitar matrimonio a otra si no está casada
+--no se si esta bien, habria que revisarlo
+context Person inv solicitaMatrimonioSiNoEstaCasada:
+    self.solicita->forAll(noCasada | noCasada.isMarried() = false)
+
+--El año de muerte de una persona no puede ser mayor que el año de su nacimiento
+context Person inv fechaMuerteNoPuedeSerMayorAlAnoDeNacimiento:
+    self.deathYear > self.birthYear
+
+--La edad no puede ser null
+context Person inv edadNoPuedeSerNull:
+    self.age <> null
