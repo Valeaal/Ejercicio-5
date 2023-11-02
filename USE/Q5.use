@@ -107,7 +107,10 @@ Clock[1] role clock
 end
 
 constraints
---RESTRICCIONES ALÉTICAS
+-------------------------------------------------
+-------------RESTRICCIONES ALÉTICAS--------------
+-------------------------------------------------
+
 
 --Una persona no puede fallecer antes de nacer.
 context Person inv personaNoPuedeMorirAntesDeNacer:
@@ -140,12 +143,26 @@ context Person inv noPuedesDivorciarteSiNoEstasCasado:
     (self.wife.wife->includes(self) or 
     self.husband.husband->includes(self))
 
---RESTRICCIONES DEÓNTICAS
+-------------------------------------------------
+-------------RESTRICCIONES DEÓNTICAS-------------
+-------------------------------------------------
 
---No puede haber más que un reloj en toda la aplicación (y por tanto compartido por 
---todas las comunidades)
+--No puede haber más que un reloj en toda la aplicación (y por tanto compartido por todas las comunidades)
+context Clock inv NumReloj:
+Clock.allInstances()->size=1
 
---Una persona no puede estar casada consigo misma.
+--Una persona no puede estar casada consigo misma 1.
+context Person inv autoMatrimonioWife:
+self.wife <> null implies
+self.wife -> select(m | m.wife = self) -> isEmpty()         --metodo 1
+--self.wife.wife -> forAll(p | self <> p)                   --metodo 2
+
+--Una persona no puede estar casada consigo misma 2.
+context Person inv autoMatrimonioHusband:
+self.husband <> null implies
+self.husband -> select(m | m.husband = self) -> isEmpty()   --metodo 1
+--self.husband.husband -> forAll(p | self <> p)             --metodo 2
+
 
 --Monogamia: Una persona no puede tener más de un matrimonio activo en un momento dado.
 
@@ -156,7 +173,9 @@ context Person inv noPuedesDivorciarteSiNoEstasCasado:
 --La edad en las que las personas cambian de niño a joven, de joven a adulto o de adulto a anciano puede
 --depender de la comunidad a la que pertenezca la persona.
 
---RESTRICCIONES ADICIONALES
+-------------------------------------------------
+-------------RESTRICCIONES ADICIONALES-----------
+-------------------------------------------------
 
 --Una persona solo puede solicitar matrimonio a otra si no está casada
 --no se si esta bien, habria que revisarlo
@@ -170,3 +189,6 @@ context Person inv fechaMuerteNoPuedeSerMayorAlAnoDeNacimiento:
 --La edad no puede ser null
 context Person inv edadNoPuedeSerNull:
     self.age <> null
+
+
+
