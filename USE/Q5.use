@@ -8,10 +8,10 @@ age : Integer derive:
     if (self.community.clock.NOW <> null) then
         if (self.community.clock.NOW < self.birthYear) then null
         else
-            if (self.community.clock.NOW >=self.birthYear and self.community.clock.NOW < self.deathYear) then
+            if (self.community.clock.NOW >= self.birthYear and self.community.clock.NOW < self.deathYear) then
                 self.community.clock.NOW - self.birthYear
             else
-                if (self.community.clock.NOW >=self.birthYear and self.community.clock.NOW >= self.deathYear) then
+                if (self.community.clock.NOW >= self.birthYear and self.community.clock.NOW >= self.deathYear) then
                     self.deathYear - self.birthYear
                 else null
                 endif
@@ -19,11 +19,10 @@ age : Integer derive:
         endif
     else null
     endif
-
 estadoMarital : String derive:
-    if (self.husband->size() > 0) then 'Casada'
+    if (self.husband -> size() > 0) then 'Casada'
     else
-        if (self.wife->size() > 0) then 'Casado'
+        if (self.wife -> size() > 0) then 'Casado'
         else    'Soltere'
         endif
     endif
@@ -31,8 +30,8 @@ isDead : Boolean derive:
     self.deathYear <> null implies 
         self.community.clock.NOW >= self.deathYear and self.community.clock.NOW >= self.birthYear
 estadoEdad : String derive : 
-    if (self.age<>null and self.age>=0) then 
-        if (self.age >=0 and self.age < self.community.edadNinoJoven) then 'Nino' 
+    if (self.age<>null and self.age>= 0) then 
+        if (self.age >= 0 and self.age < self.community.edadNinoJoven) then 'Nino' 
         else 
             if (self.age >= self.community.edadNinoJoven and self.age < self.community.edadJovenAdulto) then 'Joven' 
             else
@@ -46,16 +45,69 @@ estadoEdad : String derive :
         endif
     else 'No nacido'
     endif
-
     operations
     
     isMarried(): Boolean =
-    self.husband->exists(m | m.startYear <> null and m.husband->size() >= 1) or
-    self.wife->exists(m | m.startYear <> null and m.wife->size() >= 1) --creo que esta ultima linea se podria quitar
+    self.husband -> exists(m | m.startYear <> null and m.husband -> size() >= 1) or
+    self.wife -> exists(m | m.startYear <> null and m.wife -> size() >= 1) --creo que esta ultima linea se podria quitar
 
     marriages(): Integer =
-    self.husband->size() + self.wife->size()
+    self.husband -> size() + self.wife -> size()
+
+    cumpleAnos()
+        begin
+            self.age := self.age + 1;
+        end
+        pre: self.isDead = false             --Solo se suman años a los vivos
+
+    casarseConMarido(marido : Person)
+        begin
+        declare m : Marriage;
+        m := new Marriage;
+        insert(self, m) into marryWifeHusband;
+        insert(marido, m) into marryHusbandWife;
+        marido.estadoMarital := 'Casado';
+        self.estadoMarital := 'Casado';
+        m.startYear := self.community.clock.NOW;
+        m.endYear := null;
+
+        if (not self.solicitado -> isEmpty()) then
+                delete(self,marido) from casa;
+        end;
+
+         if (not self.solicita -> isEmpty()) then
+                delete(marido,self) from casa;
+        end;        
+
+        end
+        pre: (self.solicita -> exists (p | p = marido) and marido.solicitado -> exists (p | p = self)) or (self.solicitado -> exists (p | p = marido) and marido.solicita -> exists (p | p = self))
+        post: not (self.solicita -> exists (p | p = marido) and marido.solicitado -> exists (p | p = self)) or not (self.solicitado -> exists (p | p = marido) and marido.solicita -> exists (p | p = self))
+    
+    casarseConMujer(mujer : Person)
+        begin
+        declare m : Marriage;
+        m := new Marriage;
+        insert(self, m) into marryHusbandWife;
+        insert(mujer, m) into marryWifeHusband;
+        mujer.estadoMarital := 'Casado';
+        self.estadoMarital := 'Casado';
+        m.startYear := self.community.clock.NOW;
+        m.endYear := null;
+
+        if (not self.solicitado -> isEmpty()) then
+                delete(self,mujer) from casa;
+        end;
+
+         if (not self.solicita -> isEmpty()) then
+                delete(mujer,self) from casa;
+        end;        
+
+        end
+        pre: (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
+        post: not (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or not (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
 end
+
+
 
 class Marriage
 attributes
@@ -73,7 +125,16 @@ end
 class Clock
 attributes
 NOW: Integer
---started : Boolean -> No se como usarlo honestamente
+operations
+anoNuevo()
+    begin
+        self.NOW := self.NOW + 1;
+         for p in Person.allInstances() do
+            if (p.isDead <> true) then       --Si no hacemos esto, USE parara la ejecucion de la operacion si encuentra a alguien muerto porque no se cumple la precondicion
+                p.cumpleAnos();
+            end                            
+        end
+    end
 end
 
 association marryWifeHusband between
@@ -129,19 +190,19 @@ context Person inv personaMuertaNoPuedeEstarCasada:
 --No se puede nacer en el futuro: Clock.NOW tiene que ser mayor o igual que cualquier fecha de nacimiento.
 context Community inv noSePuedeNacerEnElFuturo:
     self.clock.NOW <> null implies
-        self.person->forAll(p | p.birthYear <> null implies p.birthYear <= self.clock.NOW)
+        self.person -> forAll(p | p.birthYear <> null implies p.birthYear <= self.clock.NOW)
 
 --No puede haber matrimonios futuros (“acordados”): Clock.NOW tiene que ser siempre mayor o igual que cualquier fecha de comienzo de un matrimonio.
 context Community inv noHayMatrimoniosAcordados:
     self.clock <> null implies
-        (self.person.husband<> null implies self.person.husband->forAll(h | h.startYear <= self.clock.NOW)) and
+        (self.person.husband<> null implies self.person.husband -> forAll(h | h.startYear <= self.clock.NOW)) and
         (self.person.wife <> null implies self.person.wife -> forAll(w | w.startYear <= self.clock.NOW))
 
 --No se puede divorciar una persona de alguien con quien no esté actualmente casado.
 context Person inv noPuedesDivorciarteSiNoEstasCasado:
     self.solicitaDiv <> null implies
-    (self.wife.wife->includes(self) or 
-    self.husband.husband->includes(self))
+    (self.wife.wife -> includes(self) or 
+    self.husband.husband -> includes(self))
 
 -------------------------------------------------
 -------------RESTRICCIONES DEÓNTICAS-------------
@@ -149,7 +210,7 @@ context Person inv noPuedesDivorciarteSiNoEstasCasado:
 
 --No puede haber más que un reloj en toda la aplicación (y por tanto compartido por todas las comunidades)
 context Clock inv NumReloj:
-Clock.allInstances()->size=1
+Clock.allInstances() -> size = 1
 
 --Una persona no puede estar casada consigo misma
 context Person inv autoMatrimonio:
@@ -188,7 +249,7 @@ isDead = false
 --Una persona solo puede solicitar matrimonio a otra si no está casada
 --no se si esta bien, habria que revisarlo
 context Person inv solicitaMatrimonioSiNoEstaCasada:
-    self.solicita->forAll(noCasada | noCasada.isMarried() = false)
+    self.solicita -> forAll(noCasada | noCasada.isMarried() = false)
 
 --El año de muerte de una persona no puede ser mayor que el año de su nacimiento
 context Person inv fechaMuerteNoPuedeSerMayorAlAnoDeNacimiento:
