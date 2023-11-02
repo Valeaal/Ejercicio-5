@@ -151,27 +151,35 @@ context Person inv noPuedesDivorciarteSiNoEstasCasado:
 context Clock inv NumReloj:
 Clock.allInstances()->size=1
 
---Una persona no puede estar casada consigo misma 1.
-context Person inv autoMatrimonioWife:
-self.wife <> null implies
-self.wife -> select(m | m.wife = self) -> isEmpty()         --metodo 1
---self.wife.wife -> forAll(p | self <> p)                   --metodo 2
-
---Una persona no puede estar casada consigo misma 2.
-context Person inv autoMatrimonioHusband:
-self.husband <> null implies
-self.husband -> select(m | m.husband = self) -> isEmpty()   --metodo 1
---self.husband.husband -> forAll(p | self <> p)             --metodo 2
-
+--Una persona no puede estar casada consigo misma
+context Person inv autoMatrimonio:
+not self.wife -> isEmpty() implies
+self.wife -> select(m | m.wife = self) -> isEmpty()                         --Metodo 1
+--self.wife.wife -> forAll(p | self <> p)                                   --Metodo 2
 
 --Monogamia: Una persona no puede tener más de un matrimonio activo en un momento dado.
+context Person inv monogamia:
+  self.wife -> union(self.husband) -> forAll(m1, m2 |                       
+    m1 <> m2 implies (                                                      
+     (m1.endYear < m2.startYear and m1.startYear < m2.startYear) or 
+        (m1.endYear > m2.startYear and m1.startYear > m2.startYear)
+    ) --Hacemos un set de todos los matrimonios, y cogemos todas las combinaciones con el forAll. Si no son el mismo matrimonio tiene que cumplir esas condiciones
+  )
 
 --Los niños no pueden estar casados.
+context Person inv ninoSoltero:
+self.age < self.community.edadNinoJoven implies
+self.wife -> isEmpty() and self.husband -> isEmpty()
+
 
 --No se permite ni la eutanasia ni el suicidio.
+context Person inv muerteNatural:
+self.age < self.community.edadJovenAdulto implies
+isDead = false
 
 --La edad en las que las personas cambian de niño a joven, de joven a adulto o de adulto a anciano puede
 --depender de la comunidad a la que pertenezca la persona.
+--Especificado en el diagrama de clases
 
 -------------------------------------------------
 -------------RESTRICCIONES ADICIONALES-----------
