@@ -122,7 +122,22 @@ estadoEdad : String derive :
                 self.husband -> select(m | m.endYear = null) -> asSequence -> first().endYear := self.community.clock.NOW;
             end;
        else                                             --Borramos las posibles relaciones
-            if (not self.solicitado -> isEmpty())
+            if (not self.solicitado -> isEmpty()) then
+                for p in self.solicitado do
+                    delete (self, p) from casa;
+                end;
+            end;
+            if (not self.solicita -> isEmpty()) then
+                for p in self.solicita do
+                    delete (p, self) from casa;
+                end;
+            end;
+            if (not self.solicitadoDiv -> isEmpty()) then
+                delete (self, self.solicitadoDiv) from divorcio;
+            end;
+            if (not self.solicitaDiv -> isEmpty()) then
+                delete (self.solicitaDiv, self) from divorcio;
+            end;
        end;
 
         end
