@@ -45,14 +45,16 @@ estadoEdad : String derive :
         endif
     else 'No nacido'
     endif
+
     operations
     
-    isMarried(): Boolean =
-    self.husband -> exists(m | m.startYear <> null and m.husband -> size() >= 1) or
-    self.wife -> exists(m | m.startYear <> null and m.wife -> size() >= 1) --creo que esta ultima linea se podria quitar
+    isMarried(): 
+        Boolean =
+        self.husband -> exists(m | m.startYear <> null and m.husband -> size() >= 1) or
+        self.wife -> exists(m | m.startYear <> null and m.wife -> size() >= 1) --creo que esta ultima linea se podria quitar
 
-    marriages(): Integer =
-    self.husband -> size() + self.wife -> size()
+    marriages(): 
+        Integer = self.husband -> size() + self.wife -> size()
 
     cumpleAnos()
         begin
@@ -105,6 +107,27 @@ estadoEdad : String derive :
         end
         pre: (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
         post: not (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or not (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
+   
+    fallecer()
+        begin
+        self.deathYear := self.community.clock.NOW;
+        self.estadoMarital := 'Muerte';             
+        self.isDead := true;
+        if (self.isMarried()) then                      --Comprobamos, para finalizar el matrimonio
+            if(not self.wife -> isEmpty()) then         --Si tiene mujer
+                self.wife -> select(m | m.endYear = null) -> asSequence -> first().wife.estadoMarital := 'Viuda';
+                self.wife -> select(m | m.endYear = null) -> asSequence -> first().endYear := self.community.clock.NOW;
+            else                                        --Si tiene marido
+                self.husband -> select(m | m.endYear = null) -> asSequence -> first().husband.estadoMarital := 'Viudo';
+                self.husband -> select(m | m.endYear = null) -> asSequence -> first().endYear := self.community.clock.NOW;
+            end;
+       else                                             --Borramos las posibles relaciones
+            if (not self.solicitado -> isEmpty())
+       end;
+
+        end
+        pre: self.isDead = false
+        post: self.isDead = true
 end
 
 
