@@ -20,15 +20,22 @@ age : Integer derive:
     else null
     endif
 estadoMarital : String derive:
-    if (self.husband -> size() > 0) then 'Casada'
+    if (self.husband -> size() > 0 and self.genero='Femenino') then 'Casada'
     else
-        if (self.wife -> size() > 0) then 'Casado'
-        else    'Soltere'
+        if (self.wife -> size() > 0 and self.genero='Masculino') then 'Casado'
+        else    
+            if (self.genero='Femenino') then 'Soltera'
+            else
+                if (self.genero='Masculino') then 'Soltero'
+                else null
+                endif
+            endif
         endif
     endif
 isDead : Boolean derive: 
     self.deathYear <> null implies 
-        self.community.clock.NOW >= self.deathYear and self.community.clock.NOW >= self.birthYear
+        self.community.clock.NOW <>null implies
+            self.community.clock.NOW >= self.deathYear and self.community.clock.NOW >= self.birthYear
 estadoEdad : String derive : 
     if (self.age<>null and self.age>= 0) then 
         if (self.age >= 0 and self.age < self.community.edadNinoJoven) then 'Nino' 
@@ -45,107 +52,178 @@ estadoEdad : String derive :
         endif
     else 'No nacido'
     endif
+genero : String
+operations
 
-    operations
-    
-    isMarried(): 
-        Boolean =
-        self.husband -> exists(m | m.startYear <> null and m.husband -> size() >= 1) or
-        self.wife -> exists(m | m.startYear <> null and m.wife -> size() >= 1) --creo que esta ultima linea se podria quitar
+isMarried(): 
+    Boolean =
+    self.husband -> exists(m | m.startYear <> null and m.husband -> size() >= 1) or
+    self.wife -> exists(m | m.startYear <> null and m.wife -> size() >= 1) --creo que esta ultima linea se podria quitar
 
-    marriages(): 
-        Integer = self.husband -> size() + self.wife -> size()
+marriages(): 
+    Integer = self.husband -> size() + self.wife -> size()
 
-    cumpleAnos()
-        begin
-            self.age := self.age + 1;
-        end
-        pre: self.isDead = false             --Solo se suman años a los vivos
+cumpleAnos()
+    begin
+        self.age := self.age + 1;
+    end
+    pre: self.isDead = false             --Solo se suman años a los vivos
 
-    casarseConMarido(marido : Person)
-        begin
-        declare m : Marriage;
-        m := new Marriage;
-        insert(self, m) into marryWifeHusband;
-        insert(marido, m) into marryHusbandWife;
-        marido.estadoMarital := 'Casado';
-        self.estadoMarital := 'Casado';
-        m.startYear := self.community.clock.NOW;
-        m.endYear := null;
+casarseConMarido(marido : Person)
+    begin
+    declare m : Marriage;
+    m := new Marriage;
+    insert(self, m) into marryWifeHusband;
+    insert(marido, m) into marryHusbandWife;
+    marido.estadoMarital := 'Casado';
+    self.estadoMarital := 'Casado';
+    m.startYear := self.community.clock.NOW;
+    m.endYear := null;
 
-        if (not self.solicitado -> isEmpty()) then
-                delete(self,marido) from casa;
+    if (not self.solicitado -> isEmpty()) then
+            delete(self,marido) from casa;
+    end;
+
+        if (not self.solicita -> isEmpty()) then
+            delete(marido,self) from casa;
+    end;        
+
+    end
+    pre: (self.solicita -> exists (p | p = marido) and marido.solicitado -> exists (p | p = self)) or (self.solicitado -> exists (p | p = marido) and marido.solicita -> exists (p | p = self))
+    post: not (self.solicita -> exists (p | p = marido) and marido.solicitado -> exists (p | p = self)) or not (self.solicitado -> exists (p | p = marido) and marido.solicita -> exists (p | p = self))
+
+casarseConMujer(mujer : Person)
+    begin
+    declare m : Marriage;
+    m := new Marriage;
+    insert(self, m) into marryHusbandWife;
+    insert(mujer, m) into marryWifeHusband;
+    mujer.estadoMarital := 'Casado';
+    self.estadoMarital := 'Casado';
+    m.startYear := self.community.clock.NOW;
+    m.endYear := null;
+
+    if (not self.solicitado -> isEmpty()) then
+            delete(self,mujer) from casa;
+    end;
+
+        if (not self.solicita -> isEmpty()) then
+            delete(mujer,self) from casa;
+    end;        
+
+    end
+    pre: (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
+    post: not (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or not (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
+
+fallecer()
+    begin
+    self.deathYear := self.community.clock.NOW;
+    self.estadoMarital := 'Muerte';             
+    self.isDead := true;
+    if (self.isMarried()) then                      --Comprobamos, para finalizar el matrimonio
+        if(not self.wife -> isEmpty()) then         --Si tiene mujer
+            self.wife -> select(m | m.endYear = null) -> asSequence -> first().wife.estadoMarital := 'Viuda';
+            self.wife -> select(m | m.endYear = null) -> asSequence -> first().endYear := self.community.clock.NOW;
+        else                                        --Si tiene marido
+            self.husband -> select(m | m.endYear = null) -> asSequence -> first().husband.estadoMarital := 'Viudo';
+            self.husband -> select(m | m.endYear = null) -> asSequence -> first().endYear := self.community.clock.NOW;
         end;
-
-         if (not self.solicita -> isEmpty()) then
-                delete(marido,self) from casa;
-        end;        
-
-        end
-        pre: (self.solicita -> exists (p | p = marido) and marido.solicitado -> exists (p | p = self)) or (self.solicitado -> exists (p | p = marido) and marido.solicita -> exists (p | p = self))
-        post: not (self.solicita -> exists (p | p = marido) and marido.solicitado -> exists (p | p = self)) or not (self.solicitado -> exists (p | p = marido) and marido.solicita -> exists (p | p = self))
-    
-    casarseConMujer(mujer : Person)
-        begin
-        declare m : Marriage;
-        m := new Marriage;
-        insert(self, m) into marryHusbandWife;
-        insert(mujer, m) into marryWifeHusband;
-        mujer.estadoMarital := 'Casado';
-        self.estadoMarital := 'Casado';
-        m.startYear := self.community.clock.NOW;
-        m.endYear := null;
-
+    else                                             --Borramos las posibles relaciones
         if (not self.solicitado -> isEmpty()) then
-                delete(self,mujer) from casa;
+            for p in self.solicitado do
+                delete (self, p) from casa;
+            end;
         end;
+        if (not self.solicita -> isEmpty()) then
+            for p in self.solicita do
+                delete (p, self) from casa;
+            end;
+        end;
+        if (not self.solicitadoDiv -> isEmpty()) then
+            delete (self, self.solicitadoDiv) from divorcio;
+        end;
+        if (not self.solicitaDiv -> isEmpty()) then
+            delete (self.solicitaDiv, self) from divorcio;
+        end;
+    end;
 
-         if (not self.solicita -> isEmpty()) then
-                delete(mujer,self) from casa;
-        end;        
+    end
+    pre: self.isDead = false
+    post: self.isDead = true
 
-        end
-        pre: (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
-        post: not (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or not (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
-   
-    fallecer()
-        begin
-        self.deathYear := self.community.clock.NOW;
-        self.estadoMarital := 'Muerte';             
-        self.isDead := true;
-        if (self.isMarried()) then                      --Comprobamos, para finalizar el matrimonio
-            if(not self.wife -> isEmpty()) then         --Si tiene mujer
-                self.wife -> select(m | m.endYear = null) -> asSequence -> first().wife.estadoMarital := 'Viuda';
-                self.wife -> select(m | m.endYear = null) -> asSequence -> first().endYear := self.community.clock.NOW;
-            else                                        --Si tiene marido
-                self.husband -> select(m | m.endYear = null) -> asSequence -> first().husband.estadoMarital := 'Viudo';
-                self.husband -> select(m | m.endYear = null) -> asSequence -> first().endYear := self.community.clock.NOW;
-            end;
-       else                                             --Borramos las posibles relaciones
-            if (not self.solicitado -> isEmpty()) then
-                for p in self.solicitado do
-                    delete (self, p) from casa;
-                end;
-            end;
-            if (not self.solicita -> isEmpty()) then
-                for p in self.solicita do
-                    delete (p, self) from casa;
-                end;
-            end;
-            if (not self.solicitadoDiv -> isEmpty()) then
-                delete (self, self.solicitadoDiv) from divorcio;
-            end;
-            if (not self.solicitaDiv -> isEmpty()) then
-                delete (self.solicitaDiv, self) from divorcio;
-            end;
-       end;
+proponerDivorcio(persona : Person)
+    begin
+        insert(self,persona) into divorcio
+    end
+    pre: (self.husband.exists(p|p.husband=persona) implies persona.wife.exists(p|p.wife=self)) and 
+        (self.wife.exists(p|p.wife  =persona) implies persona.husband.exists(p|p.husband=self)) and 
+        not self.solicitadoDiv->includes(persona) and not persona.solicitaDiv->includes(self)
+    post: self.solicitadoDiv->includes(persona) and persona.solicitaDiv->includes(self)
+    
 
-        end
-        pre: self.isDead = false
-        post: self.isDead = true
+proponerMatrimonio(persona : Person)
+    begin
+        insert(self,persona) into casa
+    end
+
+    pre: (not self.husband.exists(p|p.husband=persona) implies not persona.wife.exists(p|p.wife=self))      --NO DEBERIAS PODER PROPONER SI YA ESTAS CASADO
+    and (not self.wife.exists(p|p.wife  =persona) implies not persona.husband.exists(p|p.husband=self) ) and 
+         not self.solicitado->includes(persona) and not persona.solicita->includes(self)
+    post: self.solicitado->includes(persona) and persona.solicita->includes(self)
+
+casar(persona : Person)
+    begin
+        if(self.genero='Femenino') then 
+            self.casarseConMarido(persona);
+        else
+            if (self.genero='Masculino') then
+            self.casarseConMujer(persona);
+            end;
+        end;
+    end
+    pre: self.solicita->includes(persona) and persona.solicitado->includes(self) and (self.genero <> persona.genero) --No aceptamos matrimonios homosexuales!
+    post: not self.solicita->includes(persona) and not persona.solicitado->includes(self)
+
+rechazarCasar(persona : Person)
+    begin
+        delete(persona,self) from casa;
+    end
+    pre: self.solicita->includes(persona) and persona.solicitado->includes(self)
+    post: not self.solicita->includes(persona) and not persona.solicitado->includes(self)
+
+rechazarDivorciar(persona: Person)
+    begin
+        delete(persona,self) from divorcio
+    end
+    pre: self.solicitaDiv->includes(persona) and persona.solicitadoDiv->includes(self)
+    post: not self.solicitaDiv->includes(persona) and not persona.solicitadoDiv->includes(self)
+
+divorciar(persona : Person)
+    begin
+    declare m : Marriage;
+        if (self.genero='Femenino') then
+            m :=self.husband->select(p|p.husband=persona)->asSequence()->first();
+            delete (persona,m) from marryHusbandWife;
+            delete (self,m) from marryWifeHusband;
+            delete(persona,self) from divorcio;
+            destroy(m)
+        else
+            if (self.genero='Masculino') then
+                m:=self.wife->select(p|p.wife=persona)->asSequence()->first();
+                delete(persona,m) from marryWifeHusband;
+                delete(self,m) from marryHusbandWife;
+                delete(persona,self) from divorcio;
+                destroy(m);
+            end;
+        end;
+    end
+    pre: self.solicitaDiv->includes(persona) and persona.solicitadoDiv->includes(self) and 
+        (self.husband.exists(p|p.husband=persona) and persona.wife.exists(p|p.wife  =self)) or 
+        (self.wife.exists(p|p.wife=persona) and persona.husband.exists(p|p.husband=self))
+        and self.genero <> persona.genero
+    post: not self.solicitaDiv->includes(persona) and not persona.solicitadoDiv->includes(self)
+
 end
-
-
 
 class Marriage
 attributes
@@ -289,13 +367,19 @@ isDead = false
 context Person inv solicitaMatrimonioSiNoEstaCasada:
     self.solicita -> forAll(noCasada | noCasada.isMarried() = false)
 
---El año de muerte de una persona no puede ser mayor que el año de su nacimiento
+--El año de muerte de una persona no puede ser menor que el año de su nacimiento
 context Person inv fechaMuerteNoPuedeSerMayorAlAnoDeNacimiento:
-    self.deathYear > self.birthYear
+    self.deathYear<> null implies self.deathYear > self.birthYear
 
 --La edad no puede ser null
 context Person inv edadNoPuedeSerNull:
     self.age <> null
 
+--El genero no puede ser null
+context Person inv generoNoPuedeSerNull:
+    self.genero <> null
 
+--El genero tiene que ser 'Masculino' o 'Femenino'
+context Person inv generoTieneQueSerUnoDeLosDos:
+    self.genero <> null implies (self.genero='Masculino' or self.genero='Femenino')
 
