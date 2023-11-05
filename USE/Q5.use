@@ -95,8 +95,8 @@ casarseConMarido(marido : Person)
     end;        
 
     end
-    pre: (self.solicita -> exists (p | p = marido) and marido.solicitado -> exists (p | p = self)) or (self.solicitado -> exists (p | p = marido) and marido.solicita -> exists (p | p = self))
-    post: not (self.solicita -> exists (p | p = marido) and marido.solicitado -> exists (p | p = self)) or not (self.solicitado -> exists (p | p = marido) and marido.solicita -> exists (p | p = self))
+    pre: (self.solicita <> null and marido.solicitado <> null) or (self.solicitado <> null and marido.solicita <> null)
+    post: not (self.solicita <> null and marido.solicitado <> null) or not (self.solicitado <> null and marido.solicita <> null)
 
 casarseConMujer(mujer : Person)
     begin
@@ -118,8 +118,8 @@ casarseConMujer(mujer : Person)
     end;        
 
     end
-    pre: (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
-    post: not (self.solicita -> exists (p | p = mujer) and mujer.solicitado -> exists (p | p = self)) or not (self.solicitado -> exists (p | p = mujer) and mujer.solicita -> exists (p | p = self))
+    pre: (self.solicita <> null and mujer.solicitado <> null) or (self.solicitado <> null and mujer.solicita <> null)
+    post: not (self.solicita <> null and mujer.solicitado <> null) or not (self.solicitado <> null and mujer.solicita <> null)
 
 fallecer()
     begin
@@ -136,14 +136,10 @@ fallecer()
         end;
     else                                             --Borramos las posibles relaciones
         if (not self.solicitado -> isEmpty()) then
-            for p in self.solicitado do
-                delete (self, p) from casa;
-            end;
+                delete (self, self.solicitado) from casa;
         end;
         if (not self.solicita -> isEmpty()) then
-            for p in self.solicita do
-                delete (p, self) from casa;
-            end;
+                delete (self.solicita, self) from casa;
         end;
         if (not self.solicitadoDiv -> isEmpty()) then
             delete (self, self.solicitadoDiv) from divorcio;
@@ -223,9 +219,10 @@ divorciar(persona : Person)
             end;
         end;
     end
-    pre: self.solicitaDiv->includes(persona) and persona.solicitadoDiv->includes(self) and 
-        (self.husband.exists(p|p.husband=persona) and persona.wife.exists(p|p.wife  =self)) or 
-        (self.wife.exists(p|p.wife=persona) and persona.husband.exists(p|p.husband=self))
+    pre: ((self.solicitaDiv->includes(persona) and persona.solicitadoDiv->includes(self)) or 
+            (self.solicitaDiv->includes(self) and persona.solicitadoDiv->includes(persona))) and 
+        ((self.husband.exists(p|p.husband=persona) and persona.wife.exists(p|p.wife  =self)) or 
+        (self.wife.exists(p|p.wife=persona) and persona.husband.exists(p|p.husband=self)))
         and self.genero <> persona.genero
     post: not self.solicitaDiv->includes(persona) and not persona.solicitadoDiv->includes(self)
 
@@ -270,8 +267,8 @@ Marriage[*] role wife
 end
 
 association casa between
-Person[*] role solicita
-Person[*] role solicitado
+Person[0..1] role solicita
+Person[0..1] role solicitado
 end
 
 association divorcio between
@@ -371,7 +368,7 @@ isDead = false
 --Una persona solo puede solicitar matrimonio a otra si no está casada
 --no se si esta bien, habria que revisarlo
 context Person inv solicitaMatrimonioSiNoEstaCasada:
-    self.solicita -> forAll(noCasada | noCasada.isMarried() = false)
+    self.solicita->notEmpty() implies self.solicita.isMarried() = false
 
 --El año de muerte de una persona no puede ser menor que el año de su nacimiento
 context Person inv fechaMuerteNoPuedeSerMayorAlAnoDeNacimiento:
