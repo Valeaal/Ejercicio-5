@@ -24,7 +24,7 @@ estadoMarital : String derive:
     else
         if (self.wife -> size() > 0 and self.genero='Masculino') then 'Casado'
         else    
-            if (self.husband -> size() = 0 and self.genero='Femenino') or (self.isDead and self.genero='Femenino) = true then 'Soltera'
+            if (self.husband -> size() = 0 and self.genero='Femenino') or (self.isDead and self.genero='Femenino') = true then 'Soltera'
             else
                 if (self.wife -> size() = 0 and self.genero='Masculino') or (self.isDead = true and self.genero='Masculino') then 'Soltero'
                 else
