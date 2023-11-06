@@ -68,11 +68,9 @@
     </eAnnotations>
     <ownedEnd xmi:type="uml:Property" xmi:id="_SGi5lHs1Ee6ZwpYCc5xyVA" name="solicita" type="_Ewes0Hs0Ee6ZwpYCc5xyVA" association="_SGiSgHs1Ee6ZwpYCc5xyVA">
       <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_ghgHQHs1Ee6ZwpYCc5xyVA"/>
-      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_ghuwwHs1Ee6ZwpYCc5xyVA" value="*"/>
     </ownedEnd>
     <ownedEnd xmi:type="uml:Property" xmi:id="_SGi5kXs1Ee6ZwpYCc5xyVA" name="solicitado" type="_Ewes0Hs0Ee6ZwpYCc5xyVA" association="_SGiSgHs1Ee6ZwpYCc5xyVA">
       <lowerValue xmi:type="uml:LiteralInteger" xmi:id="_SGi5kns1Ee6ZwpYCc5xyVA"/>
-      <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="_SGi5k3s1Ee6ZwpYCc5xyVA" value="*"/>
     </ownedEnd>
   </packagedElement>
   <packagedElement xmi:type="uml:Association" xmi:id="_oLzggHs1Ee6ZwpYCc5xyVA" memberEnd="_oL0Hkns1Ee6ZwpYCc5xyVA _oL0HlXs1Ee6ZwpYCc5xyVA">
