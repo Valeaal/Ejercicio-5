@@ -37,3 +37,5 @@
 !insert (Community1,Person4) into perteneceAComunidad
 !Person3.genero := 'Masculino'
 !Person4.genero := 'Femenino'
+!Person3.proponerMatrimonio(Person4)
+!Person4.casar(Person3)

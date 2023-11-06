@@ -124,7 +124,13 @@ casarseConMujer(mujer : Person)
 fallecer()
     begin
     self.deathYear := self.community.clock.NOW;
-    self.estadoMarital := 'Muerte';             
+
+    --if (self.genero='Femenino') then 
+    --    self.estadoMarital := 'Soltera';
+    --else
+    --    self.estadoMarital := 'Soltero';
+    --send;
+
     self.isDead := true;
     if (self.isMarried()) then                      --Comprobamos, para finalizar el matrimonio
         if(not self.wife -> isEmpty()) then         --Si tiene mujer
