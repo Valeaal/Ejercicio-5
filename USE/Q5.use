@@ -20,17 +20,18 @@ age : Integer derive:
     else null
     endif
 estadoMarital : String derive:
-    if (self.husband -> size() > 0 and self.genero='Femenino') then 'Casada'
+
+    if (self.husband -> size() = 0 and self.genero='Femenino') or (self.isDead and self.genero='Femenino') = true then 'Soltera'
     else
-        if (self.wife -> size() > 0 and self.genero='Masculino') then 'Casado'
+        if (self.wife -> size() = 0 and self.genero='Masculino') or (self.isDead = true and self.genero='Masculino') then 'Soltero'
         else    
-            if (self.husband -> size() = 0 and self.genero='Femenino') or (self.isDead and self.genero='Femenino') = true then 'Soltera'
+            if (self.isDead = false and self.marriages()>0 and self.husband -> size() > 0 and self.husband.husband->exists(husband | husband.isDead = true) and self.genero='Femenino') then 'Viuda'
             else
-                if (self.wife -> size() = 0 and self.genero='Masculino') or (self.isDead = true and self.genero='Masculino') then 'Soltero'
+                if (self.isDead = false and self.marriages()>0 and self.wife -> size() > 0 and self.wife.wife->exists(wife | wife.isDead = true) and self.genero='Masculino') then 'Viudo'
                 else
-                    if (self.isDead = false and self.marriages()>0 and self.husband -> size() = 0 and self.genero='Femenino') then 'Viuda'
+                    if (self.husband -> size() > 0 and self.genero='Femenino') then 'Casada'
                     else
-                        if (self.isDead = false and self.marriages()>0 and self.wife -> size() = 0 and self.genero='Masculino') then 'Viudo'
+                        if (self.wife -> size() > 0 and self.genero='Masculino') then 'Casado'
                         else null
                         endif
                     endif
@@ -38,6 +39,11 @@ estadoMarital : String derive:
             endif
         endif
     endif
+
+
+
+
+
 isDead : Boolean derive: 
     self.deathYear <> null implies 
         self.community.clock.NOW <>null implies
@@ -123,15 +129,17 @@ casarseConMujer(mujer : Person)
 
 fallecer()
     begin
-    self.deathYear := self.community.clock.NOW;
 
-    --if (self.genero='Femenino') then 
-    --    self.estadoMarital := 'Soltera';
-    --else
-    --    self.estadoMarital := 'Soltero';
-    --send;
+    if (self.genero='Femenino') then 
+        self.estadoMarital := 'Soltera';
+    else
+        self.estadoMarital := 'Soltero';
+    end;
 
     self.isDead := true;
+
+    self.deathYear := self.community.clock.NOW;
+    
     if (self.isMarried()) then                      --Comprobamos, para finalizar el matrimonio
         if(not self.wife -> isEmpty()) then         --Si tiene mujer
             self.wife -> select(m | m.endYear = null) -> asSequence -> first().wife.estadoMarital := 'Viuda';
