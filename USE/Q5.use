@@ -20,7 +20,6 @@ age : Integer derive:
     else null
     endif
 estadoMarital : String derive:
-
     if (self.husband -> size() = 0 and self.genero='Femenino') or (self.isDead and self.genero='Femenino') = true then 'Soltera'
     else
         if (self.wife -> size() = 0 and self.genero='Masculino') or (self.isDead = true and self.genero='Masculino') then 'Soltero'
@@ -39,11 +38,6 @@ estadoMarital : String derive:
             endif
         endif
     endif
-
-
-
-
-
 isDead : Boolean derive: 
     self.deathYear <> null implies 
         self.community.clock.NOW <>null implies
@@ -101,7 +95,7 @@ casarseConMarido(marido : Person)
     end;        
 
     end
-    pre: (self.solicita <> null and marido.solicitado <> null) or (self.solicitado <> null and marido.solicita <> null)
+    pre: (self.solicita <> null and marido.solicitado <> null) or (self.solicitado <> null and marido.solicita <> null) and self.isDead=false and marido.isDead=false
     post: not (self.solicita <> null and marido.solicitado <> null) or not (self.solicitado <> null and marido.solicita <> null)
 
 casarseConMujer(mujer : Person)
@@ -124,7 +118,7 @@ casarseConMujer(mujer : Person)
     end;        
 
     end
-    pre: (self.solicita <> null and mujer.solicitado <> null) or (self.solicitado <> null and mujer.solicita <> null)
+    pre: (self.solicita <> null and mujer.solicitado <> null) or (self.solicitado <> null and mujer.solicita <> null) and self.isDead=false and mujer.isDead=false
     post: not (self.solicita <> null and mujer.solicitado <> null) or not (self.solicitado <> null and mujer.solicita <> null)
 
 fallecer()
@@ -173,7 +167,7 @@ proponerDivorcio(persona : Person)
     end
     pre: (self.husband.exists(p|p.husband=persona) implies persona.wife.exists(p|p.wife=self)) and 
         (self.wife.exists(p|p.wife  =persona) implies persona.husband.exists(p|p.husband=self)) and 
-        not self.solicitadoDiv->includes(persona) and not persona.solicitaDiv->includes(self)
+        not self.solicitadoDiv->includes(persona) and not persona.solicitaDiv->includes(self) and self.isDead=false and persona.isDead=false
     post: self.solicitadoDiv->includes(persona) and persona.solicitaDiv->includes(self)
     
 
@@ -182,22 +176,22 @@ proponerMatrimonio(persona : Person)
         insert(self,persona) into casa
     end
 
-    pre: (not self.husband.exists(p|p.husband=persona) implies not persona.wife.exists(p|p.wife=self))      --NO DEBERIAS PODER PROPONER SI YA ESTAS CASADO
-    and (not self.wife.exists(p|p.wife  =persona) implies not persona.husband.exists(p|p.husband=self) ) and 
-         not self.solicitado->includes(persona) and not persona.solicita->includes(self)
+    pre: self.isDead=false and persona.isDead=false and self.solicitado <> persona and persona.solicitado <> self
+        
     post: self.solicitado->includes(persona) and persona.solicita->includes(self)
 
 casar(persona : Person)
     begin
-        if(self.genero='Femenino') then 
+        if(self.genero='Femenino' and persona.isDead=false) then 
             self.casarseConMarido(persona);
         else
-            if (self.genero='Masculino') then
+            if (self.genero='Masculino' and persona.isDead=false) then
             self.casarseConMujer(persona);
             end;
         end;
     end
-    pre: self.solicita->includes(persona) and persona.solicitado->includes(self) and (self.genero <> persona.genero) --No aceptamos matrimonios homosexuales!
+    pre: self.solicita->includes(persona) and persona.solicitado->includes(self) and (self.genero <> persona.genero) --No aceptamos matrimonios homosexuales! 
+        and self.marriages() = 0 and persona.marriages() = 0
     post: not self.solicita->includes(persona) and not persona.solicitado->includes(self)
 
 rechazarCasar(persona : Person)
