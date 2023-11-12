@@ -209,7 +209,7 @@ casar(persona : Person)
             end;
         end;
     end
-    pre: self.solicita->includes(persona) and persona.solicitado->includes(self) and (self.genero <> persona.genero) --No aceptamos matrimonios homosexuales! 
+    pre: self.solicita->includes(persona) and persona.solicitado->includes(self) and (self.genero <> persona.genero) 
         and self.marriages() = 0 and persona.marriages() = 0
     post: not self.solicita->includes(persona) and not persona.solicitado->includes(self)
 
@@ -266,27 +266,27 @@ post: self.initialized
         states
             s: initial
             Init
-            Nino [self.age < self.community.edadNinoJoven and not self.isDead]
+            Nino [self.age < self.community.edadNinoJoven and self.initialized and not self.isDead]
             Joven [self.age >= self.community.edadNinoJoven and self.age < self.community.edadJovenAdulto 
             and not self.isDead]
             Adulto [self.age >= self.community.edadJovenAdulto and self.age < self.community.edadAdultoAnciano
-            and not self.isDead]
-            Anciano [self.age >= self.community.edadAdultoAnciano and not self.isDead]
+            and self.initialized and not self.isDead]
+            Anciano [self.age >= self.community.edadAdultoAnciano and not self.isDead and self.initialized]
             Muerte : final [self.isDead]
         transitions
             s->Init
-            Init->Nino {[ self.age < self.community.edadNinoJoven and not self.initialized] initialize()}
+            Init->Nino {[self.age < self.community.edadNinoJoven and not self.initialized] initialize()}
             Init->Joven {[self.age >= self.community.edadNinoJoven and self.age < self.community.edadJovenAdulto
                         and not self.initialized] initialize()}
             Init->Adulto {[self.age >= self.community.edadJovenAdulto and self.age < self.community.edadAdultoAnciano
                         and not self.initialized] initialize()}
             Init->Anciano {[self.age >= self.community.edadAdultoAnciano and not self.initialized] initialize()}
 
-            Nino->Nino {[self.age + 1 < self.community.edadNinoJoven] cumpleAnos()}
+            Nino->Nino {[self.age < self.community.edadNinoJoven] cumpleAnos()}
             Nino->Joven {[self.age + 1 >= self.community.edadNinoJoven] cumpleAnos()}
-            Joven->Joven {[self.age + 1 < self.community.edadJovenAdulto] cumpleAnos()}
+            Joven->Joven {[self.age < self.community.edadJovenAdulto] cumpleAnos()}
             Joven->Adulto {[self.age + 1 >= self.community.edadJovenAdulto] cumpleAnos()}
-            Adulto->Adulto {[self.age + 1 < self.community.edadAdultoAnciano] cumpleAnos()}
+            Adulto->Adulto {[self.age < self.community.edadAdultoAnciano] cumpleAnos()}
             Adulto->Anciano {[self.age + 1 >= self.community.edadAdultoAnciano] cumpleAnos()}
             Anciano->Anciano {[not self.isDead and (self.deathYear - self.community.clock.NOW) > 0] cumpleAnos()}
 
@@ -296,33 +296,38 @@ post: self.initialized
             Anciano->Muerte {[not self.isDead] fallecer()}
     end
 
-    psm MatrimoniosYDivorcios
-        states
-            s: initial
-            Init
-            Soltero [not self.isMarried()]
-            Casado [self.isMarried()]
-            Viudo [self.marriages() > 0 and not self.isMarried() and self.esViudo()]
-            Muerto : final [self.isDead]
-        transitions
-            s->Init
-            Init->Soltero {[not self.isMarried()] initialize()}
-            Init->Casado {[self.isMarried()] initialize()}
-            Soltero->Soltero{[not self.isMarried() and self.age >= self.community.edadNinoJoven] proponerMatrimonio()}
-            Soltero->Soltero{[not self.isMarried() and not self.solicita.isMarried()] rechazarCasar()}
-            Soltero->Casado{[not self.isMarried() and not self.solicita.isMarried()] casar()}
-            Casado->Casado{[self.isMarried()] proponerDivorcio()}
-            Casado->Casado{[self.isMarried()] rechazarDivorciar()}
-            Casado->Casado{[self.isMarried()] divorciar()}
-            Casado->Viudo{[self.isMarried() and not self.esViudo()] enviudar()}
-            Viudo->Viudo{[self.esViudo() and not self.isMarried() and not self.solicita.isMarried()] proponerMatrimonio()}
-            Viudo->Viudo{[self.esViudo() and not self.isMarried() and not self.solicita.isMarried()] rechazarCasar()}
-            Viudo->Casado{[self.esViudo() and not self.isMarried() and not self.solicita.isMarried()] casar()}
-            Init->Muerto{[self.isDead] initialize()}
-            Soltero->Muerto{[not self.isDead] fallecer()}
-            Casado->Muerto{[not self.isDead] fallecer()}
-            Viudo->Muerto{[not self.isDead] fallecer()}
-    end
+    --psm MatrimoniosYDivorcios
+    --    states
+    --        s: initial
+    --        Init
+    --        Soltero [not self.isMarried()]
+    --        Casado [self.isMarried()]
+    --        Viudo [self.marriages() > 0 and not self.isMarried() and self.esViudo()]
+    --        Muerto : final [self.isDead]
+    --   transitions
+    --        s->Init
+    --        Init->Soltero {[not self.isMarried()] initialize()}
+    --        Init->Casado {[self.isMarried()] initialize()}
+
+    --        Soltero->Soltero{[not self.isMarried() and self.age >= self.community.edadNinoJoven] proponerMatrimonio()}
+    --        Soltero->Soltero{[not self.isMarried()] rechazarCasar()}
+    --        Soltero->Casado{[not self.isMarried() and not self.solicita.isMarried()] casar()}
+            
+    --       Casado->Casado{[self.isMarried()] proponerDivorcio()}
+    --        Casado->Casado{[self.isMarried()] rechazarDivorciar()}
+    --        Casado->Casado{[self.isMarried()] divorciar()}
+    --        Casado->Viudo{[self.isMarried() and not self.esViudo()] enviudar()}
+
+    --        Viudo->Viudo{[self.esViudo() and not self.isMarried() and not self.solicita.isMarried()] proponerMatrimonio()}
+    --        Viudo->Viudo{[self.esViudo() and not self.isMarried() and not self.solicita.isMarried()] rechazarCasar()}
+    --        Viudo->Casado{[self.esViudo() and not self.isMarried() and not self.solicita.isMarried()] casar()}
+
+    --        Init->Muerto{[self.isDead] initialize()}
+    --        Soltero->Muerto{[not self.isDead] fallecer()}
+    --        Casado->Muerto{[not self.isDead] fallecer()}
+    --        Viudo->Muerto{[not self.isDead] fallecer()}
+    --end
+
 end
 
 class Marriage
@@ -482,5 +487,6 @@ context Person inv generoNoPuedeSerNull:
 --El genero tiene que ser 'Masculino' o 'Femenino'
 context Person inv generoTieneQueSerUnoDeLosDos:
     self.genero <> null implies (self.genero='Masculino' or self.genero='Femenino')
+
 
 
